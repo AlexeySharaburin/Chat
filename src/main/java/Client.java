@@ -13,9 +13,8 @@ import java.util.Scanner;
 public class Client {
 
     private static Date data = new Date();
-    private static SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm:ss dd.MM.yyyy.MM.dd");
+    private static SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm:ss dd.MM.yyyy");
     final private static String nameSettings = "settings.txt";
-    final private static String nameLog = "file.log";
 
     public static void main(String[] args) {
         try {
@@ -32,8 +31,15 @@ public class Client {
                 String inputString;
                 String clientName = getClientName();
                 String hiClient = clientName + " вошёл в чат";
-                socketChannel.write(ByteBuffer.wrap(hiClient.getBytes(StandardCharsets.UTF_8)));
+
+                ByteBuffer outBuffer = ByteBuffer.wrap(hiClient.getBytes(StandardCharsets.UTF_8));
+                WaitingQueue.chatList.add(outBuffer);
+                socketChannel.write(WaitingQueue.chatList.poll());
+
+                int bytesCount = socketChannel.read(inputBuffer);
+                System.out.println(new String(inputBuffer.array(), 0, bytesCount, StandardCharsets.UTF_8));
                 inputBuffer.clear();
+
                 while (true) {
                     System.out.print(clientName + ", введите, пожалуйста, ваше сообщение (наберите 'ВЫХОД', чтобы покинуть чат): ");
                     inputString = scanner.nextLine();
@@ -41,14 +47,21 @@ public class Client {
                         System.out.println(clientName + ", до новых встреч!");
                         String byClient = clientName + " покинул чат";
                         System.out.println(byClient);
-                        socketChannel.write(ByteBuffer.wrap(byClient.getBytes(StandardCharsets.UTF_8)));
-                        inputBuffer.clear();
+
+                        ByteBuffer msgBuffer = ByteBuffer.wrap(byClient.getBytes(StandardCharsets.UTF_8));
+                        WaitingQueue.chatList.add(msgBuffer);
+                        socketChannel.write(WaitingQueue.chatList.poll());
+
                         break;
                     }
+
                     String resultString = clientName + ": " + inputString;
-                    socketChannel.write(ByteBuffer.wrap(resultString.getBytes(StandardCharsets.UTF_8)));
-                    Thread.sleep(3000);
-                    int bytesCount = socketChannel.read(inputBuffer);
+                    outBuffer = ByteBuffer.wrap(resultString.getBytes(StandardCharsets.UTF_8));
+                    WaitingQueue.chatList.add(outBuffer);
+                    socketChannel.write(WaitingQueue.chatList.poll());
+
+                    Thread.sleep(2000);
+                    bytesCount = socketChannel.read(inputBuffer);
                     System.out.println(new String(inputBuffer.array(), 0, bytesCount, StandardCharsets.UTF_8));
                     inputBuffer.clear();
                 }
